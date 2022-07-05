@@ -1,6 +1,6 @@
 # Oberth
 
-An orbital mechanics simulation tool/library.
+An orbital mechanics simulation tool/library. Currently, just a simple N-body simulation with leapfrog integration.
 
 ## Planned features
 

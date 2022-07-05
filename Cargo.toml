@@ -12,5 +12,5 @@ vek = "0.15"
 
 [dev-dependencies]
 kiss3d = "0.33"
-nalgebra = "0.29"
 rand = "0.8"
+plotters = "0.3"

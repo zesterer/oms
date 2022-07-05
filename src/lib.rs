@@ -16,6 +16,8 @@ pub struct Pos(pub Vec3<f64>);
 #[derive(Clone, Debug)]
 pub struct Vel(pub Vec3<f64>);
 
+pub struct Acc(pub Vec3<f64>);
+
 #[derive(Clone, Debug)]
 pub struct Radius(pub f64);
 
@@ -44,6 +46,7 @@ impl Constructor for SimpleBody {
             self.vel,
             self.mass,
             self.radius,
+            Acc(Vec3::zero()),
         )))
     }
 }
@@ -67,8 +70,7 @@ impl System {
 
     pub fn run_tick(&mut self, dt: f64) {
         self.ecs.borrow::<ecs::UniqueViewMut<Dt>>().unwrap().0 = dt;
-        self.ecs.run(update_vel);
-        self.ecs.run(update_pos);
+        self.ecs.run(tick);
     }
 
     pub fn get<C: Clone + Send + Sync + 'static>(&self, id: Id) -> Option<C> {
@@ -82,6 +84,8 @@ impl System {
         let dt = dt.as_secs_f64();
         let dt_time = time / dt;
 
+        self.ecs.run(init);
+
         for _ in 0..dt_time.floor() as usize {
             self.run_tick(dt);
         }
@@ -91,42 +95,57 @@ impl System {
 
 const G: f64 = 0.00000000006674;
 
-fn update_vel(
-    dt: ecs::UniqueView<Dt>,
-    pos: ecs::View<Pos>,
+fn init(
+    mut pos: ecs::ViewMut<Pos>,
+    mut acc: ecs::ViewMut<Acc>,
     mass: ecs::View<Mass>,
     mut vel: ecs::ViewMut<Vel>,
 ) {
-    // println!("Tick! dt = {}", dt.0);
-    for (e0, (pos0, mass0, mut vel0)) in (&pos, &mass, &mut vel).iter().with_id() {
+    update_acc(&pos, &mass, &mut acc);
+}
+
+fn tick(
+    dt: ecs::UniqueView<Dt>,
+    mut pos: ecs::ViewMut<Pos>,
+    mut acc: ecs::ViewMut<Acc>,
+    mass: ecs::View<Mass>,
+    mut vel: ecs::ViewMut<Vel>,
+) {
+    for (mut vel, acc) in (&mut vel, &acc).iter() {
+        vel.0 += acc.0 * dt.0 / 2.0;
+    }
+
+    for (mut pos, vel) in (&mut pos, &vel).iter() {
+        pos.0 += vel.0 * dt.0;
+    }
+
+    update_acc(&pos, &mass, &mut acc);
+
+    for (mut vel, acc) in (&mut vel, &acc).iter() {
+        vel.0 += acc.0 * dt.0 / 2.0;
+    }
+}
+
+fn update_acc(
+    pos: &ecs::ViewMut<Pos>,
+    mass: &ecs::View<Mass>,
+    acc: &mut ecs::ViewMut<Acc>,
+) {
+    for (e0, (pos0, mass0, mut acc0)) in (pos, mass, acc).iter().with_id() {
         let mut net_force = Vec3::<f64>::zero();
-        for (_, (pos1, mass1)) in (&pos, &mass)
+        for (_, (pos1, mass1)) in (pos, mass)
             .iter()
             .with_id()
             .filter(|(e1, _)| e0 != *e1)
         {
-            let dist = pos0.0.distance(pos1.0);
-            assert!(dist > 0.01);
-            let dir = (pos1.0 - pos0.0) / dist;
+            let diff = pos1.0 - pos0.0;
+            let dist = diff.magnitude();
+            let dir = diff / dist;
 
             let force = G * (mass0.0 * mass1.0) / dist.powi(2);
-            // println!("Force: {}, dist: {}, mass0: {}, mass1: {}", force, dist, mass0.0, mass1.0);
             net_force += force * dir;
         }
 
-        assert!(net_force.map(|e| e.is_finite()).reduce_and());
-        assert!(mass0.0.is_finite());
-
-        vel0.0 += net_force * dt.0 / mass0.0;
-    }
-}
-
-fn update_pos(
-    dt: ecs::UniqueView<Dt>,
-    mut pos: ecs::ViewMut<Pos>,
-    vel: ecs::View<Vel>,
-) {
-    for (mut pos, vel) in (&mut pos, &vel).iter() {
-        pos.0 += vel.0 * dt.0;
+        acc0.0 = net_force / mass0.0;
     }
 }

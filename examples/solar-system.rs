@@ -1,6 +1,5 @@
 use oberth::{System, Id, SimpleBody, Mass, Pos, Vel, Radius, Vec3};
 use std::time::Duration;
-use nalgebra::{Vector3, UnitQuaternion};
 use kiss3d::{event::{Key, Action}, window::Window, light::Light};
 use rand::{thread_rng, Rng};
 
@@ -83,6 +82,8 @@ fn main() {
         (jupiter, [1.0, 0.3, 0.1]),
     ];
 
+    // sys.run(Duration::from_secs(3600 * 24), 60.0 * 60.0 * 24.0 * 365.25 * 1000.0);
+
     // for _ in 0..50 {
     //     let scale = thread_rng().gen::<f64>().powf(3.0) * 0.1;
     //     let id = sys.add(SimpleBody {
@@ -109,6 +110,8 @@ fn main() {
             (body, id)
         })
         .collect::<Vec<_>>();
+
+    println!("{:?}", sys.get::<Vel>(earth).unwrap().0);
 
     while window.render() {
         let frame = sys.get::<Pos>(sun).unwrap().0;
