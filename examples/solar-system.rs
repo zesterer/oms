@@ -3,7 +3,7 @@ use std::time::Duration;
 use kiss3d::{event::{Key, Action}, window::Window, light::Light};
 use rand::{thread_rng, Rng};
 
-const SCALE: f64 = 0.000_000_000_1;
+const SCALE: f64 = 0.000_000_001;
 
 fn main() {
     let mut sys = System::new();
@@ -64,6 +64,20 @@ fn main() {
         641_710_000_000_000_000_000_000.0, // mass
         3_376_200.0, // radius
     );
+    let phobos = body(
+        Some(mars),
+        9_234_420.0, // dist
+        2_138.0, // vel
+        10_659_000_000_000_000.0, // mass
+        11_266.7, // radius
+    );
+    let deimos = body(
+        Some(mars),
+        23_455_500.0, // dist
+        1_351.3, // vel
+        1_476_200_000_000_000.0, // mass
+        6_200.0, // radius
+    );
     let jupiter = body(
         Some(sun),
         au * 5.4570, // dist
@@ -73,13 +87,15 @@ fn main() {
     );
 
     let mut bodies = vec![
-        (sun, [1.0, 0.8, 0.0]),
-        (mercury, [0.8, 0.8, 0.0]),
-        (venus, [1.0, 0.9, 0.5]),
-        (earth, [0.0, 0.7, 1.0]),
-        (mars, [1.0, 0.5, 0.3]),
-        (moon, [0.5, 0.5, 0.6]),
-        (jupiter, [1.0, 0.3, 0.1]),
+        ("Sun", sun, [1.0, 0.8, 0.0]),
+        ("Mercury", mercury, [0.8, 0.8, 0.0]),
+        ("Venus", venus, [1.0, 0.9, 0.5]),
+        ("Earth", earth, [0.0, 0.7, 1.0]),
+        ("Mars", mars, [1.0, 0.5, 0.3]),
+        ("Phobos", phobos, [1.0, 0.65, 0.5]),
+        ("Deimos", deimos, [0.7, 0.7, 0.65]),
+        ("Moon", moon, [0.5, 0.5, 0.6]),
+        ("Jupiter", jupiter, [1.0, 0.3, 0.1]),
     ];
 
     // sys.run(Duration::from_secs(3600 * 24), 60.0 * 60.0 * 24.0 * 365.25 * 1000.0);
@@ -103,9 +119,10 @@ fn main() {
     window.set_light(Light::StickToCamera);
 
     let mut body_shapes = bodies
-        .into_iter()
-        .map(|(id, [r, g, b])| {
-            let mut body = window.add_sphere((sys.get::<Radius>(id).unwrap().0 * SCALE).powf(0.35) as f32 * 15.0);
+        .iter()
+        .cloned()
+        .map(|(_, id, [r, g, b])| {
+            let mut body = window.add_sphere((sys.get::<Radius>(id).unwrap().0 * SCALE)/*.powf(0.35)*/ as f32 /* * 15.0*/);
             body.set_color(r, g, b);
             (body, id)
         })
@@ -113,11 +130,25 @@ fn main() {
 
     println!("{:?}", sys.get::<Vel>(earth).unwrap().0);
 
+    let mut focus_idx = 0;
+    let mut time_since_action = 0;
     while window.render() {
-        let frame = sys.get::<Pos>(sun).unwrap().0;
+        window.set_title(&format!("Solar System ({})", bodies[focus_idx].0));
+        let frame = sys.get::<Pos>(bodies[focus_idx].1).unwrap().0;
 
         for (body_shape, id) in &mut body_shapes {
             body_shape.set_local_translation(((sys.get::<Pos>(*id).unwrap().0 - frame) * SCALE).map(|e| e as f32).into_array().into());
+        }
+
+        if time_since_action > 10 {
+            if window.get_key(Key::Equals) == Action::Press {
+                focus_idx = (focus_idx + 1) % bodies.len();
+                time_since_action = 0;
+            }
+            if window.get_key(Key::Minus) == Action::Press {
+                focus_idx = (focus_idx + bodies.len() - 1) % bodies.len();
+                time_since_action = 0;
+            }
         }
 
         if window.get_key(Key::Space) != Action::Press {
@@ -134,5 +165,6 @@ fn main() {
             };
             sys.run(Duration::from_secs(3600 * 24), 60.0 * 60.0 * 24.0 * 365.25 * 0.00005 * speed);
         }
+        time_since_action += 1;
     }
 }

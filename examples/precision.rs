@@ -42,7 +42,7 @@ fn simulate(step: Duration) -> Vec3<f64> {
     );
 
     // println!("Simulating 1000 years..");
-    sys.run(step, 60.0 * 60.0 * 24.0 * 365.25 * 10.0);
+    sys.run(step, 60.0 * 60.0 * 24.0 * 365.25 * 100.0);
 
     let sun_pos = sys.get::<Pos>(sun).unwrap().0;
     let earth_pos = sys.get::<Pos>(earth).unwrap().0;
