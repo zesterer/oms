@@ -1,4 +1,4 @@
-use oberth::{System, Id, SimpleBody, Mass, Pos, Vel, Radius, Vec3};
+use oms::{System, Id, SimpleBody, Mass, Pos, Vel, Radius, Vec3};
 use std::time::Duration;
 use plotters::prelude::*;
 

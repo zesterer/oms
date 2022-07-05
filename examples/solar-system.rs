@@ -1,9 +1,12 @@
-use oberth::{System, Id, SimpleBody, Mass, Pos, Vel, Radius, Vec3};
-use std::time::Duration;
-use kiss3d::{event::{Key, Action}, window::Window, light::Light};
+use oms::{System, Id, SimpleBody, Mass, Pos, Vel, Radius, Vec3};
+use std::{
+    time::Duration,
+    collections::VecDeque,
+};
+use kiss3d::{event::{Key, Action}, window::Window, light::Light, camera::ArcBall};
 use rand::{thread_rng, Rng};
 
-const SCALE: f64 = 0.000_000_001;
+const SCALE: f64 = 0.000_000_01;
 
 fn main() {
     let mut sys = System::new();
@@ -91,10 +94,10 @@ fn main() {
         ("Mercury", mercury, [0.8, 0.8, 0.0]),
         ("Venus", venus, [1.0, 0.9, 0.5]),
         ("Earth", earth, [0.0, 0.7, 1.0]),
+        ("Moon", moon, [0.5, 0.5, 0.6]),
         ("Mars", mars, [1.0, 0.5, 0.3]),
         ("Phobos", phobos, [1.0, 0.65, 0.5]),
         ("Deimos", deimos, [0.7, 0.7, 0.65]),
-        ("Moon", moon, [0.5, 0.5, 0.6]),
         ("Jupiter", jupiter, [1.0, 0.3, 0.1]),
     ];
 
@@ -124,20 +127,41 @@ fn main() {
         .map(|(_, id, [r, g, b])| {
             let mut body = window.add_sphere((sys.get::<Radius>(id).unwrap().0 * SCALE)/*.powf(0.35)*/ as f32 /* * 15.0*/);
             body.set_color(r, g, b);
-            (body, id)
+            (body, id, VecDeque::new())
         })
         .collect::<Vec<_>>();
 
-    println!("{:?}", sys.get::<Vel>(earth).unwrap().0);
+    let mut camera = ArcBall::new_with_frustrum(
+        0.5,
+        0.001,
+        100000.0,
+        [0.0, 1.0, 0.0].into(),
+        [0.0; 3].into(),
+    );
 
     let mut focus_idx = 0;
     let mut time_since_action = 0;
-    while window.render() {
+    while !window.should_close() {
         window.set_title(&format!("Solar System ({})", bodies[focus_idx].0));
         let frame = sys.get::<Pos>(bodies[focus_idx].1).unwrap().0;
 
-        for (body_shape, id) in &mut body_shapes {
-            body_shape.set_local_translation(((sys.get::<Pos>(*id).unwrap().0 - frame) * SCALE).map(|e| e as f32).into_array().into());
+        camera.set_at((frame * SCALE).map(|e| e as f32).into_array().into());
+
+        for (body_shape, id, path) in &mut body_shapes {
+            let pos = (sys.get::<Pos>(*id).unwrap().0 * SCALE).map(|e| e as f32).into_array();
+            body_shape.set_local_translation(pos.into());
+
+            const MAX_LEN: usize = 500;
+            while path.len() > MAX_LEN { path.pop_back(); }
+            path.push_front(pos);
+
+            for (i, line) in path.make_contiguous().windows(2).enumerate() {
+                window.draw_line(
+                    &line[0].into(),
+                    &line[1].into(),
+                    &[1.0 - (i as f32 / MAX_LEN as f32); 3].into(),
+                );
+            }
         }
 
         if time_since_action > 10 {
@@ -153,18 +177,20 @@ fn main() {
 
         if window.get_key(Key::Space) != Action::Press {
             let speed = if window.get_key(Key::Key1) == Action::Press {
-                100.0
+                250.0
             } else if window.get_key(Key::Key2) == Action::Press {
-                500.0
+                250.0
             } else if window.get_key(Key::Key3) == Action::Press {
-                2500.0
+                1200.0
             } else if window.get_key(Key::Key4) == Action::Press {
-                50000.0
+                25000.0
             } else {
-                5.0
+                1.0
             };
-            sys.run(Duration::from_secs(3600 * 24), 60.0 * 60.0 * 24.0 * 365.25 * 0.00005 * speed);
+            sys.run(Duration::from_secs(3600), 60.0 * 60.0 * 24.0 * 365.25 * 0.00005 * speed);
         }
         time_since_action += 1;
+
+        window.render_with_camera(&mut camera);
     }
 }

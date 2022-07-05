@@ -132,7 +132,7 @@ fn update_acc(
     acc: &mut ecs::ViewMut<Acc>,
 ) {
     for (e0, (pos0, mass0, mut acc0)) in (pos, mass, acc).iter().with_id() {
-        let mut net_force = Vec3::<f64>::zero();
+        let mut net_acc = Vec3::<f64>::zero();
         for (_, (pos1, mass1)) in (pos, mass)
             .iter()
             .with_id()
@@ -142,10 +142,10 @@ fn update_acc(
             let dist = diff.magnitude();
             let dir = diff / dist;
 
-            let force = G * (mass0.0 * mass1.0) / dist.powi(2);
-            net_force += force * dir;
+            let acc = G * mass1.0 / dist.powi(2);
+            net_acc += acc * dir;
         }
 
-        acc0.0 = net_force / mass0.0;
+        acc0.0 = net_acc;
     }
 }
