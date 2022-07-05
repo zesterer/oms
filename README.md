@@ -1,6 +1,6 @@
-# Oberth
+# OMS
 
-An orbital mechanics simulation tool/library. Currently, just a simple N-body simulation with leapfrog integration.
+An Orbital Mechanics Simulation tool/library. Currently, just a simple N-body simulation with leapfrog integration.
 
 ## Planned features
 
